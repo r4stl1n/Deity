@@ -1,6 +1,8 @@
 Deity
 =====
 
+Requirments: python-paramiko
+
 Deity is a kippo plugin that identifies dictionary attacks against it then issues 
 the same attack against the attacker. After it gains access it can execute additional
 commands. Kippo by default does not have any sorta plugin interface. So we just backpack
@@ -12,6 +14,7 @@ Copy deity.py into kippo/dblog.
 Added the following lines to your
 
 Note: commands.dat is commands seperated by new lines
+
 ```
 [database_deity]
 # Logfile
@@ -23,7 +26,7 @@ threshhold = 3
 
 # To enable command file support uncomment to two lines below
 # commandFile is the location of the file to read and execute
-#commandFile = commands
+#commandFile = commands.dat
 #commandFileVerbose = True
 
 # To enable the sshScanner change below to true
