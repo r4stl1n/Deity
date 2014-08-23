@@ -10,6 +10,7 @@ Kippo: Is a ssh honeypot
 Copy deity.py into kippo/dblog.
 Added the following lines to your
 
+Note: commands.dat is commands seperated by new lines
 ```
 [database_deity]
 # Logfile
@@ -28,3 +29,4 @@ threshhold = 3
 # Save successful loggin to seperate file
 successLog = False
 ```
+
