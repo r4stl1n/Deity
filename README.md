@@ -25,6 +25,11 @@ threshhold = 3
 #commandFile = commands
 #commandFileVerbose = True
 
+# To enable the sshScanner change below to true
+sshScanner = False
+sshScanRangeStart = 1
+sshScanRangeEnd = 200
+
 #Below hasn't been implemented
 # Save successful loggin to seperate file
 successLog = False

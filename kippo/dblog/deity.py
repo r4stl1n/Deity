@@ -7,8 +7,6 @@
 # Note: Python Logging framework used as it is thread safe
 
 # TODO:
-#   Add extra configuration options from config
-#   Add a ssh port scanner to find ssh server other ports
 #   Ability to load other attacks
 #   Save all attempted username and password
 #   Database logging on execution results
@@ -23,10 +21,43 @@ from twisted.python import log
 from paramiko import SSHClient
 from paramiko import SSHException
 from paramiko import AutoAddPolicy
+from socket import *
 
 import time
 import uuid
 import logging
+import socket
+
+class SimpleSSHScanner:
+
+    def __init__(self):
+        self.portFound = 0
+
+    def quickScan(self, ip,rangeStart,rangeEnd):
+
+        for currentPortNum in range(rangeStart,rangeEnd):
+            portScan = socket.socket()
+            
+            try:
+                portScan.connect((ip,currentPortNum))
+                if self.parseResults(portScan.recv(1024)):
+                    self.portFound = currentPortNum
+                portScan.close()
+                break
+            except:
+                pass
+
+        logging.info(self.portFound)
+        if self.portFound == 0:
+            self.portFound = 22
+
+        return self.portFound 
+
+    def parseResults(self, results):
+        if "SSH" in results:
+            return True
+        else:
+            return False
 
 class UserIpCombination:
     def __init__(self,target,username,password):
@@ -51,8 +82,16 @@ class Connection (Thread):
         self.target = combination.target
         self.combination = combination
         self.cfg = cfg
+        self.sshScann = bool(self.cfg.get('database_deity','sshScanner'))
+        self.sshScanRangeStart = int(self.cfg.get('database_deity','sshScanRangeStart'))
+        self.sshScanRangeEnd = int(self.cfg.get('database_deity','sshScanRangeEnd'))
 
     def run(self):
+        if self.sshScann:
+            scanner = SimpleSSHScanner()
+            self.portNumber = scanner.quickScan(self.target,self.sshScanRangeStart, self.sshScanRangeEnd)
+            logging.info(self.portNumber)
+
         for usernameC in self.combination.usernames:
 
             for passwordC in self.combination.passwords:
