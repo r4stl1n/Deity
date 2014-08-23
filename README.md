@@ -9,8 +9,8 @@ Kippo: Is a ssh honeypot
 
 Install:
 
-    Copy deity.py into kippo/dblog.
-    Added the following lines to your
+Copy deity.py into kippo/dblog.
+Added the following lines to your
 
     ```
     [database_deity]
