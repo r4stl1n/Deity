@@ -1,7 +1,6 @@
 ####
+# By R4stl1n
 #
-# By R4stl1n 
-# 
 # This is our "Plugin" since it is easier than rewriting code
 #
 # Note: Python Logging framework used as it is thread safe
@@ -37,7 +36,7 @@ class SimpleSSHScanner:
 
         for currentPortNum in range(rangeStart,rangeEnd):
             portScan = socket.socket()
-            
+
             try:
                 portScan.connect((ip,currentPortNum))
                 if self.parseResults(portScan.recv(1024)):
@@ -51,7 +50,7 @@ class SimpleSSHScanner:
         if self.portFound == 0:
             self.portFound = 22
 
-        return self.portFound 
+        return self.portFound
 
     def parseResults(self, results):
         if "SSH" in results:
@@ -97,7 +96,7 @@ class Connection (Thread):
             for passwordC in self.combination.passwords:
                 sshConnection = SSHClient()
 
-                sshConnection.set_missing_host_key_policy(AutoAddPolicy())     
+                sshConnection.set_missing_host_key_policy(AutoAddPolicy())
                 try:
                     logging.info('[+] Attempted access to: %s using %s:%s' % (self.target,usernameC,passwordC))
                     sshConnection.connect(self.target, port = self.portNumber, username = usernameC,password = passwordC, timeout = self.timeoutTime, allow_agent = False,look_for_keys = False)
@@ -108,13 +107,13 @@ class Connection (Thread):
                     logging.debug(a)
                 except SSHException, e:
                     logging.debug(e)
-                except:      
+                except:
                    logging.debug(sys.exc_info()[0])
 
     def commandsToExecute(self,sshConnection):
         commandFile = self.cfg.get('database_deity', 'commandFile')
         commandFileVerbose = self.cfg.get('database_deity', 'commandFileVerbose')
-        
+
         if commandFile is not None:
             logging.info('[+] Executing runscript on %s' % self.target)
             file = open(commandFile, 'r')
@@ -166,7 +165,7 @@ class Deity:
             self.currentCombinations.append(combination)
 
 class DBLogger(dblog.DBLogger):
- 
+
     def __init__(self, cfg):
         self.peerIP = None
         self.peerPort = None
