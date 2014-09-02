@@ -1,9 +1,9 @@
 Deity
 =====
 
-Requirments: python-paramiko
+Requirments: python-paramik
 
-Deity is a kippo plugin that identifies dictionary attacks against it then issues 
+Deity is a kippo plugin that identifies dictionary attacks against it then issues
 the same attack against the attacker. After it gains access it can execute additional
 commands. Kippo by default does not have any sorta plugin interface. So we just backpack
 on the logger interface
